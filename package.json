@@ -1,0 +1,36 @@
+{
+  "name": "@fuelrats/argument-validator-utils",
+  "license": "BSD-3-Clause",
+  "version": "0.1.1",
+  "main": "./dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FuelRats/argument-validator-utils.git"
+  },
+  "homepage": "https://github.com/FuelRats/argument-validator-utils",
+  "author": {
+    "name": "Cameron Welter",
+    "email": "clapton@fuelrats.com",
+    "url": "https://github.com/UncleClapton"
+  },
+  "bugs": {
+    "url": "https://github.com/FuelRats/argument-validator-utils/issues"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "build": "rm -rf dist && babel src -d dist",
+    "prepublishOnly": "yarn build"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.3",
+    "@babel/core": "^7.8.3",
+    "@babel/plugin-proposal-class-properties": "^7.8.3",
+    "@babel/preset-env": "^7.8.3",
+    "@fuelrats/eslint-config": "^1.2.2",
+    "@yarnpkg/pnpify": "^2.0.0-rc.16",
+    "babel-eslint": "^10.0.3",
+    "eslint": "^6.8.0",
+    "eslint-plugin-babel": "^5.3.0",
+    "eslint-plugin-import": "^2.20.0"
+  }
+}
