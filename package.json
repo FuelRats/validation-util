@@ -1,7 +1,7 @@
 {
   "name": "@fuelrats/argument-validator-utils",
   "license": "BSD-3-Clause",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -17,9 +17,9 @@
     "url": "https://github.com/FuelRats/argument-validator-utils/issues"
   },
   "scripts": {
-    "lint": "eslint .",
+    "lint": "yarn eslint .",
     "build": "rm -rf dist && yarn babel src -d dist",
-    "publish": "yarn build && yarn npm publish"
+    "prepublish": "yarn build"
   },
   "devDependencies": {
     "@babel/cli": "^7.8.3",
