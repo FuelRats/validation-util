@@ -91,7 +91,7 @@ const validate = (args = {}) => new (class ArgumentValidator {
     }
   }
 
-  toBe = this.generateValidator((currentValue, expectedValue) => {
+  toBe = this.asValidator((currentValue, expectedValue) => {
     if (currentValue !== expectedValue) {
       this._throwAssertionError(`to be \`${expectedValue}\``, currentValue)
     }
