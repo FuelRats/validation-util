@@ -4,6 +4,7 @@
     "target": "esnext",
     "baseUrl": "src",
     "jsx": "react",
+    "experimentalDecorators": true,
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]

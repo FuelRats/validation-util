@@ -3,6 +3,7 @@ module.exports = {
     '@babel/preset-env',
   ],
   plugins: [
-    '@babel/plugin-proposal-class-properties',
+    ['@babel/plugin-proposal-decorators', { legacy: true }],
+    ['@babel/plugin-proposal-class-properties', { loose: true }],
   ],
 }
