@@ -1,7 +1,7 @@
 {
   "name": "@fuelrats/argument-validator-utils",
   "license": "BSD-3-Clause",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
