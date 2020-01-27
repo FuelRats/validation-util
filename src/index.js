@@ -1,6 +1,4 @@
-const asFormattedArrayString = (values) => `[ ${values.map((value) => `\`${value}\``).join(' ')} ] `
-
-
+/* eslint-disable class-methods-use-this */
 class AssertionError extends Error {
   constructor (message) {
     super(message)
@@ -12,45 +10,119 @@ class AssertionError extends Error {
 
 
 
-const validate = (args = {}) => new (class ArgumentValidator {
-  /***************************************************************************\
-    Properties
-  \***************************************************************************/
+const asFormattedArrayString = (values) => `[ ${values.map((value) => `\`${value}\``).join(', ')} ]`
 
-  _argPointer = ''
-  _objName = null
-  _objType = null
-  _bufferErrors = false
-  _buffer = {}
+const asValidator = (valueMode) => (target, name, descriptor) => {
+  const validatorFunc = descriptor.value
 
+  descriptor.value = function value (...args) {
+    const callArgs = [...args]
+    let result = null
 
+    const currentValue = this._currentValue
 
+    switch (valueMode) {
+      case 'value':
+        callArgs.unshift(currentValue)
+        break
 
+      case 'type':
+        callArgs.unshift(Array.isArray(currentValue) ? 'array' : typeof currentValue)
+        break
 
-  /***************************************************************************\
-    Buffer Mode Funcs
-  \***************************************************************************/
+      default:
+        break
+    }
 
-  silently = (silent = true) => {
-    this._bufferErrors = silent
+    if (!valueMode || (valueMode && currentValue)) {
+      result = validatorFunc.apply(this, callArgs)
+    }
+
+    if (this._throwImmediate) {
+      if (result && result.assertion) {
+        throw this._getAssertionError(result)
+      }
+      return this
+    }
+
+    return result ?? undefined
+  }
+}
+
+const chainable = (target, name, descriptor) => {
+  const originalFunc = descriptor.value
+
+  descriptor.value = function value (...args) {
+    originalFunc.apply(this, args)
+
     return this
   }
+}
 
-  readErrors = () => this._buffer
+
+
+
+
+class ArgumentValidator {
+  /***************************************************************************\
+    Arguments and Value Management
+  \***************************************************************************/
+
+  _args = {}
+  _argPointer = null
+
+  get _currentValue () {
+    return this._argPointer ? this._args[this._argPointer] : this._args
+  }
+
+  @chainable
+  assert (argPointer) {
+    this._argPointer = argPointer
+  }
+
+  expect (argPointer) {
+    return this.assert(argPointer)
+  }
 
 
 
 
 
   /***************************************************************************\
-    Object meta setters
+    Throw control
   \***************************************************************************/
 
-  forObject (objName, objType = 'object') {
-    this._objName = objName
-    this._objType = objType
+  _throwImmediate = true
 
-    return this
+  @chainable
+  or (assertFunc) {
+    this._throwImmediate = false
+
+    const errors = assertFunc.apply(this, [this])
+
+    if (Array.isArray(errors) && errors.every((error) => error?.assertion)) {
+      throw this._getAssertionError(this._combineAssertions(errors))
+    }
+
+    this._throwImmediate = true
+  }
+
+
+
+
+
+  /***************************************************************************\
+    Object Metadata Management
+  \***************************************************************************/
+
+  _objMeta = null
+
+  @chainable
+  forObject (name, type = 'object') {
+    this._objMeta = {
+      name,
+      type,
+    }
   }
 
   forClass (className) {
@@ -66,130 +138,199 @@ const validate = (args = {}) => new (class ArgumentValidator {
 
 
   /***************************************************************************\
-    Argument pointers
+    Constructor
   \***************************************************************************/
 
-  assert = (argPointer) => {
-    this._argPointer = argPointer
-
-    return this
+  constructor (args) {
+    if (!args || !Object.keys(args).length) {
+      throw new TypeError('Expected validator to be created with arguments')
+    }
+    this._args = args
   }
-
-  expect = (argPointer) => this.assert(argPointer)
 
 
 
 
 
   /***************************************************************************\
-    Argument assertions
+    Validators
   \***************************************************************************/
 
-  toExist = () => {
-    if (typeof this._currentValue() === 'undefined') {
-      this._throwAssertionError('to exist', 'undefined')
+  @asValidator()
+  toExist () {
+    if (!this._currentValue) {
+      return {
+        assertion: 'to exist',
+        value: 'undefined',
+      }
     }
+
+    return undefined
   }
 
-  toBe = this.asValidator((currentValue, expectedValue) => {
-    if (currentValue !== expectedValue) {
-      this._throwAssertionError(`to be \`${expectedValue}\``, currentValue)
+  @asValidator('value')
+  toBe (value, expectedValue) {
+    if (value !== expectedValue) {
+      return {
+        assertion: `to be \`${expectedValue}\``,
+        value,
+      }
     }
-  })
 
-  toBeOneOf = this.asValidator((currentValue, ...expectedValues) => {
-    if (!expectedValues.includes(currentValue)) {
-      this._throwAssertionError(`to be one of ${asFormattedArrayString(expectedValues)}`)
+    return undefined
+  }
+
+  @asValidator('value')
+  toBeOneOf (value, ...expectedValues) {
+    if (!expectedValues.includes(value)) {
+      return {
+        assertion: `to be one of ${asFormattedArrayString(expectedValues)}`,
+      }
     }
-  })
 
-  toBeInstanceOf = this.asValidator((currentValue, expectedClass, className = 'unknown') => {
-    if (!(currentValue instanceof expectedClass)) {
-      this._throwAssertionError(`to be instance of \`${className}\``)
+    return undefined
+  }
+
+  @asValidator('value')
+  toBeInstanceOf (value, expectedClass, className = 'unknown') {
+    if (!(value instanceof expectedClass)) {
+      return {
+        assertion: `to be instance of \`${className}\``,
+        value,
+      }
     }
-  })
 
-  toBeOfType = this.asValidator((currentValue, expectedType) => {
-    const currentValueType = typeof currentValue
+    return undefined
+  }
 
-    if (currentValueType !== expectedType) {
-      this._throwAssertionError(`to be of type \`${expectedType}\``, currentValueType)
+  @asValidator('type')
+  toBeOfType (valueType, expectedType) {
+    if (valueType !== expectedType) {
+      return {
+        assertion: `to be of type \`${expectedType}\``,
+        value: valueType,
+      }
     }
-  })
 
-  toBeOneOfType = this.asValidator((currentValue, ...expectedTypes) => {
-    const currentValueType = typeof currentValue
+    return undefined
+  }
 
-    if (!expectedTypes.includes(currentValueType)) {
-      this._throwAssertionError(`to be one of type ${asFormattedArrayString(expectedTypes)}`, currentValueType)
+  @asValidator('type')
+  toBeOneOfType (valueType, ...expectedTypes) {
+    if (!expectedTypes.includes(valueType)) {
+      return {
+        assertion: `to be one of type ${asFormattedArrayString(expectedTypes)}`,
+        value: valueType,
+      }
     }
-  })
 
-  toBeKeyOf = this.asValidator((currentValue, obj, objectName) => {
-    if (Reflect.has(obj, currentValue)) {
-      this._throwAssertionError(`to be key of object \`${objectName}\``)
+    return undefined
+  }
+
+  @asValidator('value')
+  toBeKeyOf (value, obj, objectName) {
+    if (Reflect.has(obj, value)) {
+      return {
+        assertion: `to be key of object \`${objectName}\``,
+      }
     }
-  })
 
-  toBeValueOf = this.asValidator((currentValue, _obj, objectName) => {
+    return undefined
+  }
+
+  @asValidator('value')
+  toBeValueOf (currentValue, _obj, objectName) {
     const obj = Array.isArray(_obj) ? _obj : Object.values(_obj)
 
     if (obj.some((value) => value === currentValue)) {
-      this._throwAssertionError(`to be value of \`${objectName}\``)
+      return {
+        assertion: `to be value of \`${objectName}\``,
+      }
     }
-  })
 
-  throwCustom = (...funcArgs) => this._throwAssertionError(...funcArgs)
+    return undefined
+  }
+
+  @asValidator('value')
+  toContainKey (value, expectedKey) {
+    if (!Reflect.has(value, expectedKey)) {
+      return {
+        assertion: `to contain key \`${expectedKey}\``,
+      }
+    }
+
+    return undefined
+  }
+
+  @asValidator('value')
+  toContainValue (_currentValue, expectedValue) {
+    const values = Array.isArray(_currentValue) ? _currentValue : Object.values(_currentValue)
+    if (!values.some((value) => value === expectedValue)) {
+      return {
+        assertion: `to contain value \`${expectedValue}\``,
+      }
+    }
+
+    return undefined
+  }
+
+  @asValidator()
+  throwCustom (assertion) {
+    return { assertion }
+  }
 
 
 
 
 
   /***************************************************************************\
-    PRIVATE helpers
+    Internal methods
   \***************************************************************************/
 
-  asValidator = (func) => (...funcArgs) => {
-    const currentValue = this._currentValue()
+  _combineAssertions = (assertions) => assertions.reduce(
+    (acc, error) => {
+      acc.assertion += acc.assertion.length
+        ? `, or ${error.assertion}`
+        : error.assertion
 
-    if (currentValue !== undefined) {
-      func(currentValue, ...funcArgs)
-    }
+      return acc
+    },
+    {
+      assertion: '',
+    },
+  )
 
-    return this
-  }
+  _getAssertionError = ({ assertion, value }) => {
+    let message = ''
 
-  _currentValue = () => args?.[this._argPointer] ?? undefined
-
-  _throwAssertionError = (assertion, result) => {
-    // Expected argument `Name` of class `ClassName` to be of type `string`, but got `object` instead.
-    // Expected argument `doStuff` of function `someFunc` to be of type `function`, but got `null` instead.
-    // Expected argument `Name` of class `ClassName` to be of type `string`, but got `object` instead.
-    const messageParts = []
-
-    messageParts.push(`Expected argument \`${this._argPointer}\` `)
-
-    if (this._objName && this._objType) {
-      messageParts.push(`of ${this._objType} \`${this._objName}\` `)
-    }
-
-    messageParts.push(assertion ?? "to be something, but we don't know because whoever wrote this validator is a Pepega")
-
-    if (result) {
-      messageParts.push(`, but got \`${result}\` instead.`)
+    if (this._argPointer) {
+      message += `Expected argument \`${this._argPointer}\` `
     } else {
-      messageParts.push('.')
+      message += 'Expected arguments '
     }
 
-    const error = new AssertionError(messageParts.join(''))
+    const meta = this._objMeta
+    if (meta) {
+      message += `of ${meta.type} \`${meta.name}\` `
+    }
 
-    if (this._bufferErrors) {
-      this._buffer[this._argPointer] = error
+    message += assertion ?? 'to be something, but whoever wrote this validator is a pepega.'
+
+    if (value) {
+      message += `, but got \`${value}\` instead.`
     } else {
-      throw error
+      message += '.'
     }
+
+    return new AssertionError(message)
   }
-})()
+}
+
+
+
+
+
+const validate = (args = {}) => new ArgumentValidator(args)
 
 
 
