@@ -274,6 +274,32 @@ class ArgumentValidator {
     return undefined
   }
 
+  @asValidator('value')
+  toBeOfLength (currentValue, expectedLength) {
+    if (currentValue.length !== expectedLength) {
+      return {
+        assertion: `to be of length \`${expectedLength}\``,
+        value: currentValue.length,
+      }
+    }
+
+    return undefined
+  }
+
+  @asValidator('value')
+  toBeOfLengthBetween (currentValue, minLength, maxLength) {
+    const currentLength = currentValue.length
+
+    if (currentLength < minLength || currentLength > maxLength) {
+      return {
+        assertion: `to be a length between \`${minLength}\` and \`${maxLength}\``,
+        value: currentLength,
+      }
+    }
+
+    return undefined
+  }
+
   @asValidator()
   throwCustom (assertion) {
     return { assertion }
