@@ -4,4 +4,7 @@ module.exports = {
     node: true,
   },
   extends: '@fuelrats/eslint-config',
+  rules: {
+    'jsdoc/require-jsdoc': ['off'],
+  },
 }
