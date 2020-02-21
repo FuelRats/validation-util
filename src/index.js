@@ -10,46 +10,62 @@ class AssertionError extends Error {
 
 
 
-const asFormattedArrayString = (values) => `[ ${values.map((value) => `\`${value}\``).join(', ')} ]`
+const asFormattedArrayString = (values) => {
+  return `[ ${values.map((value) => {
+    return `\`${value}\``
+  }).join(', ')} ]`
+}
 
-const asValidator = (valueMode) => (target, name, descriptor) => {
-  const validatorFunc = descriptor.value
+const asValidator = (valueMode) => {
+  return (_, __, descriptor) => {
+    const validatorFunc = descriptor.value
 
-  descriptor.value = function value (...args) {
-    const callArgs = [...args]
-    let result = null
+    descriptor.value = function value (...args) {
+      const callArgs = [...args]
+      let result = null
 
-    const currentValue = this._currentValue
+      const currentValue = this._currentValue
 
-    switch (valueMode) {
-      case 'value':
-        callArgs.unshift(currentValue)
-        break
+      switch (valueMode) {
+        case 'value':
+          callArgs.unshift(currentValue)
+          break
 
-      case 'type':
-        callArgs.unshift(Array.isArray(currentValue) ? 'array' : typeof currentValue)
-        break
+        case 'length':
+          callArgs.unshift(currentValue.length)
+          break
 
-      default:
-        break
-    }
+        case 'type':
+          callArgs.unshift(Array.isArray(currentValue) ? 'array' : typeof currentValue)
+          break
 
-    if (!valueMode || (valueMode && currentValue)) {
-      result = validatorFunc.apply(this, callArgs)
-    }
-
-    if (this._throwImmediate) {
-      if (result && result.assertion) {
-        throw this._getAssertionError(result)
+        default:
+          break
       }
-      return this
-    }
 
-    return result ?? undefined
+      if (!valueMode || (valueMode && typeof currentValue !== 'undefined')) {
+        result = validatorFunc.apply(this, callArgs)
+
+        if (this._negateNext) {
+          result.assertion = `not ${result.assertion}`
+          result.condition = !result.condition
+          this._negateNext = false
+        }
+      }
+
+      if (this._throwImmediate) {
+        if (result?.condition) {
+          throw this._getAssertionError(result)
+        }
+        return this
+      }
+
+      return result ?? {}
+    }
   }
 }
 
-const chainable = (target, name, descriptor) => {
+const chainable = (_, __, descriptor) => {
   const originalFunc = descriptor.value
 
   descriptor.value = function value (...args) {
@@ -93,6 +109,7 @@ class ArgumentValidator {
   \***************************************************************************/
 
   _throwImmediate = true
+  _negateNext = false
 
   @chainable
   or (assertFunc) {
@@ -100,13 +117,19 @@ class ArgumentValidator {
 
     const errors = assertFunc.apply(this, [this])
 
-    if (Array.isArray(errors) && errors.every((error) => error?.assertion)) {
+    if (Array.isArray(errors) && errors.every((error) => {
+      return error?.condition
+    })) {
       throw this._getAssertionError(this._combineAssertions(errors))
     }
 
     this._throwImmediate = true
   }
 
+  @chainable
+  not () {
+    this._negateNext = true
+  }
 
 
 
@@ -141,10 +164,7 @@ class ArgumentValidator {
     Constructor
   \***************************************************************************/
 
-  constructor (args) {
-    if (!args || !Object.keys(args).length) {
-      throw new TypeError('Expected validator to be created with arguments')
-    }
+  constructor (args = {}) {
     this._args = args
   }
 
@@ -158,151 +178,146 @@ class ArgumentValidator {
 
   @asValidator()
   toExist () {
-    if (!this._currentValue) {
-      return {
-        assertion: 'to exist',
-        value: 'undefined',
-      }
+    return {
+      assertion: 'exist',
+      condition: typeof this.currentValue === 'undefined',
+      value: 'undefined',
     }
-
-    return undefined
   }
+
+
+  @asValidator()
+  throwCustom (assertion, value) {
+    return {
+      assertion,
+      condition: true,
+      value,
+    }
+  }
+
 
   @asValidator('value')
   toBe (value, expectedValue) {
-    if (value !== expectedValue) {
-      return {
-        assertion: `to be \`${expectedValue}\``,
-        value,
-      }
+    return {
+      assertion: `be \`${expectedValue}\``,
+      condition: value !== expectedValue,
+      value,
     }
-
-    return undefined
   }
 
   @asValidator('value')
   toBeOneOf (value, ...expectedValues) {
-    if (!expectedValues.includes(value)) {
-      return {
-        assertion: `to be one of ${asFormattedArrayString(expectedValues)}`,
-      }
+    return {
+      assertion: `be one of ${asFormattedArrayString(expectedValues)}`,
+      condition: !expectedValues.includes(value),
+      value,
     }
-
-    return undefined
   }
+
 
   @asValidator('value')
   toBeInstanceOf (value, expectedClass, className = 'unknown') {
-    if (!(value instanceof expectedClass)) {
-      return {
-        assertion: `to be instance of \`${className}\``,
-        value,
-      }
+    return {
+      assertion: `be instance of \`${className}\``,
+      condition: !(value instanceof expectedClass),
+      value,
     }
-
-    return undefined
   }
 
   @asValidator('type')
   toBeOfType (valueType, expectedType) {
-    if (valueType !== expectedType) {
-      return {
-        assertion: `to be of type \`${expectedType}\``,
-        value: valueType,
-      }
+    return {
+      assertion: `be of type \`${expectedType}\``,
+      condition: valueType !== expectedType,
+      value: valueType,
     }
-
-    return undefined
   }
 
   @asValidator('type')
   toBeOneOfType (valueType, ...expectedTypes) {
-    if (!expectedTypes.includes(valueType)) {
-      return {
-        assertion: `to be one of type ${asFormattedArrayString(expectedTypes)}`,
-        value: valueType,
-      }
+    return {
+      assertion: `be one of type ${asFormattedArrayString(expectedTypes)}`,
+      condition: !expectedTypes.includes(valueType),
+      value: valueType,
     }
-
-    return undefined
   }
+
 
   @asValidator('value')
   toBeKeyOf (value, obj, objectName) {
-    if (Reflect.has(obj, value)) {
-      return {
-        assertion: `to be key of object \`${objectName}\``,
-      }
+    return {
+      assertion: `be a key of \`${objectName}\``,
+      condition: Reflect.has(obj, value),
     }
-
-    return undefined
   }
 
   @asValidator('value')
   toBeValueOf (currentValue, _obj, objectName) {
     const obj = Array.isArray(_obj) ? _obj : Object.values(_obj)
-
-    if (obj.some((value) => value === currentValue)) {
-      return {
-        assertion: `to be value of \`${objectName}\``,
-      }
+    return {
+      assertion: `be a value of \`${objectName}\``,
+      condition: obj.some((value) => {
+        return value === currentValue
+      }),
     }
-
-    return undefined
   }
+
 
   @asValidator('value')
   toContainKey (value, expectedKey) {
-    if (!Reflect.has(value, expectedKey)) {
-      return {
-        assertion: `to contain key \`${expectedKey}\``,
-      }
+    return {
+      assertion: `contain key \`${expectedKey}\``,
+      condition: !Reflect.has(value, expectedKey),
     }
-
-    return undefined
   }
 
   @asValidator('value')
   toContainValue (_currentValue, expectedValue) {
     const values = Array.isArray(_currentValue) ? _currentValue : Object.values(_currentValue)
-    if (!values.some((value) => value === expectedValue)) {
-      return {
-        assertion: `to contain value \`${expectedValue}\``,
-      }
-    }
 
-    return undefined
+    return {
+      assertion: `contain value \`${expectedValue}\``,
+      condition: !values.some((value) => {
+        return value === expectedValue
+      }),
+    }
   }
 
-  @asValidator('value')
-  toBeOfLength (currentValue, expectedLength) {
-    if (currentValue.length !== expectedLength) {
-      return {
-        assertion: `to be of length \`${expectedLength}\``,
-        value: currentValue.length,
-      }
-    }
 
-    return undefined
+  @asValidator('length')
+  toHaveLength (currentLength, expectedLength) {
+    return {
+      assertion: `have a length of \`${expectedLength}\``,
+      condition: currentLength !== expectedLength,
+      value: currentLength,
+    }
   }
 
-  @asValidator('value')
-  toBeOfLengthBetween (currentValue, minLength, maxLength) {
-    const currentLength = currentValue.length
-
-    if (currentLength < minLength || currentLength > maxLength) {
-      return {
-        assertion: `to be a length between \`${minLength}\` and \`${maxLength}\``,
-        value: currentLength,
-      }
+  @asValidator('length')
+  toHaveLengthGreaterThan (currentLength, minimumLength) {
+    return {
+      assertion: `have a length greater than \`${minimumLength}\``,
+      condition: currentLength > minimumLength,
+      value: currentLength,
     }
-
-    return undefined
   }
 
-  @asValidator()
-  throwCustom (assertion) {
-    return { assertion }
+  @asValidator('length')
+  toHaveLengthLessThan (currentLength, maximumLength) {
+    return {
+      assertion: `have a length less than \`${maximumLength}\``,
+      condition: currentLength < maximumLength,
+      value: currentLength,
+    }
+  }
+
+  @asValidator('length')
+  toHaveLengthBetween (currentLength, minLength, maxLength) {
+    return {
+      assertion: `have a length between \`${minLength}\` and \`${maxLength}\``,
+      condition: currentLength < minLength || currentLength > maxLength,
+      value: currentLength,
+    }
   }
 
 
@@ -313,18 +328,20 @@ class ArgumentValidator {
     Internal methods
   \***************************************************************************/
 
-  _combineAssertions = (assertions) => assertions.reduce(
-    (acc, error) => {
-      acc.assertion += acc.assertion.length
-        ? `, or ${error.assertion}`
-        : error.assertion
+  _combineAssertions = (assertions) => {
+    return assertions.reduce(
+      (acc, error) => {
+        acc.assertion += acc.assertion.length
+          ? `, or ${error.assertion}`
+          : error.assertion
 
-      return acc
-    },
-    {
-      assertion: '',
-    },
-  )
+        return acc
+      },
+      {
+        assertion: '',
+      },
+    )
+  }
 
   _getAssertionError = ({ assertion, value }) => {
     let message = ''
@@ -340,7 +357,7 @@ class ArgumentValidator {
       message += `of ${meta.type} \`${meta.name}\` `
     }
 
-    message += assertion ?? 'to be something, but whoever wrote this validator is a pepega.'
+    message += `to ${assertion}` ?? 'to be something, but whoever wrote this validator is a pepega.'
 
     if (value) {
       message += `, but got \`${value}\` instead.`
@@ -356,7 +373,9 @@ class ArgumentValidator {
 
 
 
-const validate = (args = {}) => new ArgumentValidator(args)
+const validate = (args = {}) => {
+  return new ArgumentValidator(args)
+}
 
 
 
