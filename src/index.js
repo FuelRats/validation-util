@@ -363,3 +363,6 @@ const validate = (args = {}) => new ArgumentValidator(args)
 
 
 export default validate
+export {
+  AssertionError,
+}
