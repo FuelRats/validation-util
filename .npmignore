@@ -1,1 +1,7 @@
+.eslintignore
+.eslintrc.js
 .vscode
+babel.config.js
+jsconfig.json
+rollup.config.js
+src
