@@ -98,10 +98,10 @@ export default class PropertyValidator extends Validator {
   \***************************************************************************/
 
   @asValidator()
-  throwCustom (assertion, value) {
+  throwCustom (assertion, value, condition = true) {
     return {
       assertion,
-      condition: true,
+      condition,
       value,
     }
   }
@@ -127,6 +127,25 @@ export default class PropertyValidator extends Validator {
       value,
     }
   }
+
+  @asValidator('value')
+  toStartWith (value, search, position) {
+    return {
+      assertion: `start with \`${search}\` ${position ? `at position ${position}` : ''}`,
+      condition: value.startsWith?.(search, position),
+      value,
+    }
+  }
+
+  @asValidator('value')
+  toEndWith (value, search, length) {
+    return {
+      assertion: `end with \`${value}\``,
+      condition: value.endsWith(search, length),
+      value,
+    }
+  }
+
 
   @asValidator('value')
   toBeOneOf (value, ...expectedValues) {
