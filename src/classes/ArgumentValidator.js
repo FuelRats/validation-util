@@ -12,12 +12,12 @@ export default class ArgumentValidator extends Validator {
 
   __args = {}
 
-  assert (argName) {
-    return new PropertyValidator(argName, this.__args[argName], this.__parentMeta)
+  assert (argName, argValue) {
+    return new PropertyValidator(argName, argValue ?? this.__args[argName], this.__parentMeta)
   }
 
-  expect (argPointer) {
-    return this.assert(argPointer)
+  expect (...args) {
+    return this.assert(...args)
   }
 
 
