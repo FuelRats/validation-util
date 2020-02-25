@@ -10,14 +10,20 @@ export default class ArgumentValidator extends Validator {
     Arguments and Value Management
   \***************************************************************************/
 
-  __args = {}
+  #args = {}
 
   assert (argName, argValue) {
-    return new PropertyValidator(argName, argValue ?? this.__args[argName], this.__parentMeta)
+    return new PropertyValidator(argName, argValue ?? this.#args[argName], this.parentMeta)
   }
 
   expect (...args) {
     return this.assert(...args)
+  }
+
+  update (newArgs = {}) {
+    this.#args = newArgs
+
+    return this
   }
 
 
@@ -30,6 +36,6 @@ export default class ArgumentValidator extends Validator {
 
   constructor (args = {}) {
     super()
-    this.__args = args
+    this.#args = args
   }
 }
