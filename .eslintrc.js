@@ -4,7 +4,16 @@ module.exports = {
     node: true,
   },
   extends: '@fuelrats/eslint-config',
+  reportUnusedDisableDirectives: true,
   rules: {
     'jsdoc/require-jsdoc': ['off'],
   },
+  overrides: [
+    {
+      files: ['*.test.js'],
+      env: {
+        jest: true,
+      },
+    },
+  ],
 }
