@@ -11,6 +11,9 @@ module.exports = {
   overrides: [
     {
       files: ['*.test.js'],
+      rules: {
+        'max-nested-callbacks': ['off'],
+      },
       env: {
         jest: true,
       },
