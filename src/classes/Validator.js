@@ -1,14 +1,9 @@
-import chainable from '../decorators/chainable'
-
-
-
-
-
 export default class Validator {
   /***************************************************************************\
     Class Properties
   \***************************************************************************/
-  __parentMeta = undefined
+
+  #parentMeta = undefined
 
 
 
@@ -19,7 +14,7 @@ export default class Validator {
   \***************************************************************************/
 
   constructor (meta) {
-    this.__parentMeta = meta
+    this.#parentMeta = meta
   }
 
 
@@ -30,12 +25,17 @@ export default class Validator {
     Object Metadata Management
   \***************************************************************************/
 
-  @chainable
+  get parentMeta () {
+    return this.#parentMeta
+  }
+
   forObject (name, type = 'object') {
-    this.__parentMeta = {
+    this.#parentMeta = {
       name,
       type,
     }
+
+    return this
   }
 
   forClass (className) {
