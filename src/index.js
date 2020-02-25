@@ -1,10 +1,4 @@
-/* eslint-disable class-methods-use-this */
-
-
-
-
-
-import ArgumentValidator from './classes/ArgumentValidator'
+import ArgumentCollection from './classes/ArgumentCollection'
 import PropertyValidator from './classes/PropertyValidator'
 import ValidationError from './classes/ValidationError'
 
@@ -13,7 +7,7 @@ import ValidationError from './classes/ValidationError'
 
 
 const validate = (args = {}) => {
-  return new ArgumentValidator(args)
+  return new ArgumentCollection(args)
 }
 
 

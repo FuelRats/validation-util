@@ -5,15 +5,22 @@ import Validator from './Validator'
 
 
 
-export default class ArgumentValidator extends Validator {
+export default class ArgumentCollection extends Validator {
   /***************************************************************************\
     Arguments and Value Management
   \***************************************************************************/
 
   #args = {}
+  #extensions = undefined
 
   assert (argName, argValue) {
-    return new PropertyValidator(argName, argValue ?? this.#args[argName], this.parentMeta)
+    const validator = new PropertyValidator(argName, argValue ?? this.#args[argName], this.parentMeta)
+
+    if (this.#extensions) {
+      validator.extend(this.#extensions)
+    }
+
+    return validator
   }
 
   expect (...args) {
@@ -24,6 +31,13 @@ export default class ArgumentValidator extends Validator {
     this.#args = newArgs
 
     return this
+  }
+
+  extend (extensions) {
+    this.#extensions = {
+      ...this.#extensions,
+      ...extensions,
+    }
   }
 
 
