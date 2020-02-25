@@ -1,36 +1,33 @@
-import asValidator from '../decorators/asValidator'
-import chainable from '../decorators/chainable'
+import {
+  asFormattedArrayString,
+  combineAssertionMessages,
+  asFormattedObjectKeyString,
+} from '../util/formatters'
 import ValidationError from './ValidationError'
 import Validator from './Validator'
 
 
 
-const combineAssertions = (assertions) => {
-  return assertions.reduce(
-    (acc, error) => {
-      acc.assertion += acc.assertion.length
-        ? `, or ${error.assertion}`
-        : error.assertion
 
-      return acc
-    },
-    {
-      assertion: '',
-    },
-  )
+
+const validator = (_, __, descriptor) => {
+  const validatorFunc = descriptor.value
+  descriptor.value = function value (...args) {
+    return this.resolve(validatorFunc.apply(this, args) ?? {})
+  }
 }
 
+const enhancedTypeof = (value) => {
+  if (Array.isArray(value)) {
+    return 'array'
+  }
 
+  if (value === null) { /* eslint-disable-line eqeqeq */// Explicit check required
+    return 'null'
+  }
 
-
-
-const asFormattedArrayString = (values) => {
-  return `[ ${values.map((value) => {
-    return `\`${value}\``
-  }).join(', ')} ]`
+  return typeof value
 }
-
-
 
 
 
@@ -39,10 +36,13 @@ export default class PropertyValidator extends Validator {
     Class Properties
   \***************************************************************************/
 
-  __propertyName = undefined
-  __propertyValue = undefined
-  __throwImmediate = true
-  __negateNext = false
+  #propertyName = undefined
+  #propertyValue = undefined
+  #propertyType = undefined
+  #propertyLength = undefined
+
+  #nestMode = false
+  #negateNext = false
 
 
 
@@ -54,8 +54,10 @@ export default class PropertyValidator extends Validator {
 
   constructor (name, value, parentMeta) {
     super(parentMeta)
-    this.__propertyName = name
-    this.__propertyValue = value
+    this.#propertyName = name
+    this.#propertyValue = value
+    this.#propertyType = enhancedTypeof(value)
+    this.#propertyLength = value?.length
   }
 
 
@@ -63,28 +65,32 @@ export default class PropertyValidator extends Validator {
 
 
   /***************************************************************************\
-    Throw control
+    Assertion resolution
   \***************************************************************************/
 
-  @chainable
-  or (assertFunc) {
-    this.__throwImmediate = false
+  get not () {
+    this.#negateNext = true
 
-    const errors = assertFunc.apply(this, [this])
-    const throwError = Array.isArray(errors) && errors.every((error) => {
-      return error.condition
-    })
-    const combinedError = combineAssertions(errors)
-
-    if (throwError) {
-      throw new ValidationError(combinedError.assertion, this.__propertyName, undefined, this.__parentMeta)
-    }
-
-    this.__throwImmediate = true
+    return this
   }
 
-  get not () {
-    this.__negateNext = true
+  resolve (_assertion) {
+    const assertion = { ..._assertion }
+
+    if (this.#negateNext) {
+      this.#negateNext = false
+
+      assertion.message = `not ${assertion.message}`
+      assertion.pass = !assertion.pass
+    }
+
+    if (this.#nestMode) {
+      return assertion
+    }
+
+    if (!assertion.pass) {
+      throw new ValidationError(assertion.message, this.#propertyName, assertion.value, this.parentMeta)
+    }
 
     return this
   }
@@ -94,171 +100,264 @@ export default class PropertyValidator extends Validator {
 
 
   /***************************************************************************\
+    Assertion nesting
+  \***************************************************************************/
+
+  @validator
+  nest (callback, loose) {
+    const isTopLevelNest = !this.#nestMode
+
+    this.#nestMode = true
+
+    const assertions = callback.apply(this, [this]) // returns array of assertions which were resolved as objects.
+
+    if (isTopLevelNest) {
+      this.#nestMode = false
+    }
+
+    return {
+      message: combineAssertionMessages(assertions, `, ${loose ? 'or' : 'and'} `),
+      pass: assertions[loose ? 'some' : 'every']((assertion) => {
+        return assertion.pass
+      }),
+    }
+  }
+
+  every (callback) {
+    return this.nest(callback)
+  }
+
+  and (callback) {
+    return this.nest(callback)
+  }
+
+  some (callback) {
+    return this.nest(callback, true)
+  }
+
+  or (callback) {
+    return this.nest(callback, true)
+  }
+
+
+  /***************************************************************************\
+    Validator Extensions
+  \***************************************************************************/
+
+  extend (extensions = {}) {
+    Object.entries(extensions).forEach(([name, assertFunc]) => {
+      this[name] = (...args) => {
+        return this.resolve(assertFunc([{
+          name: this.#propertyName,
+          value: this.#propertyValue,
+          type: this.#propertyType,
+          length: this.#propertyLength,
+          parent: this.parentMeta,
+        }, ...args]))
+      }
+    })
+  }
+
+
+  /***************************************************************************\
     Validators
   \***************************************************************************/
 
-  @asValidator()
-  throwCustom (assertion, value, condition = true) {
+  @validator
+  throwCustom (message, value, pass) {
     return {
-      assertion,
-      condition,
+      message,
+      pass,
       value,
     }
   }
 
 
-  @asValidator('value')
-  toExist (value) {
-    const isUndefined = typeof value === 'undefined'
+  @validator
+  toExist () {
+    const type = this.#propertyType
 
     return {
-      assertion: 'exist',
-      condition: isUndefined || value === null, /* eslint-disable-line eqeqeq */// Explicit check required
-      value: isUndefined ? 'undefined' : 'null',
+      message: 'exist',
+      pass: !['undefined', 'null'].includes(type),
+      value: type,
     }
   }
 
 
-  @asValidator('value')
-  toBe (value, expectedValue) {
+  @validator
+  toBe (expectedValue) {
+    const value = this.#propertyValue
+
     return {
-      assertion: `be \`${expectedValue}\``,
-      condition: value !== expectedValue,
+      message: `be \`${expectedValue}\``,
+      pass: value === expectedValue,
       value,
     }
   }
 
-  @asValidator('value')
-  toStartWith (value, search, position) {
+  @validator
+  toStartWith (search, position = 0) {
+    const value = this.#propertyValue
+
     return {
-      assertion: `start with \`${search}\` ${position ? `at position ${position}` : ''}`,
-      condition: value.startsWith?.(search, position),
+      message: `start with \`${search}\`${position ? ` at position ${position}` : ''}`,
+      pass: value?.startsWith?.(search, position),
+      value: value.substring(position, position + search.length),
+    }
+  }
+
+  @validator
+  toEndWith (search, length) {
+    const searchLength = length ?? this.#propertyLength
+    const value = this.#propertyValue
+
+    return {
+      message: `end with \`${search}\``,
+      pass: value?.endsWith?.(search, searchLength),
+      value: value.substring(searchLength - search.length, searchLength),
+    }
+  }
+
+
+  @validator
+  toBeOneOf (...expectedValues) {
+    const value = this.#propertyValue
+
+    return {
+      message: `be one of ${asFormattedArrayString(expectedValues)}`,
+      pass: expectedValues.includes(value),
       value,
     }
   }
 
-  @asValidator('value')
-  toEndWith (value, search, length) {
+
+  @validator
+  toBeInstanceOf (expectedClass, className = 'class') {
+    const value = this.#propertyValue
+
     return {
-      assertion: `end with \`${value}\``,
-      condition: value.endsWith(search, length),
+      message: `be instance of \`${className}\``,
+      pass: value instanceof expectedClass,
+    }
+  }
+
+  @validator
+  toBeOfType (expectedType) {
+    const type = this.#propertyType
+
+    return {
+      message: `be of type \`${expectedType}\``,
+      pass: type === expectedType,
+      value: type,
+    }
+  }
+
+  @validator
+  toBeOneOfType (...expectedTypes) {
+    const type = this.#propertyType
+
+    return {
+      message: `be one of type ${asFormattedArrayString(expectedTypes)}`,
+      pass: expectedTypes.includes(type),
+      value: type,
+    }
+  }
+
+
+  @validator
+  toBeKeyOf (obj, objectName = 'object') {
+    const value = this.#propertyValue
+
+    return {
+      message: `be a key of object \`${objectName}${asFormattedObjectKeyString(Reflect.ownKeys(obj))}\``,
+      pass: Reflect.has(obj, value),
       value,
     }
   }
 
 
-  @asValidator('value')
-  toBeOneOf (value, ...expectedValues) {
+  @validator
+  toBeValueOf (obj, objectName = 'object') {
+    const value = this.#propertyValue
+    const objValues = Array.isArray(obj) ? obj : Object.values(obj)
+
     return {
-      assertion: `be one of ${asFormattedArrayString(expectedValues)}`,
-      condition: !expectedValues.includes(value),
-      value,
-    }
-  }
-
-
-  @asValidator('value')
-  toBeInstanceOf (value, expectedClass, className = 'unknown') {
-    return {
-      assertion: `be instance of \`${className}\``,
-      condition: !(value instanceof expectedClass),
-      value,
-    }
-  }
-
-  @asValidator('type')
-  toBeOfType (valueType, expectedType) {
-    return {
-      assertion: `be of type \`${expectedType}\``,
-      condition: valueType !== expectedType,
-      value: valueType,
-    }
-  }
-
-  @asValidator('type')
-  toBeOneOfType (valueType, ...expectedTypes) {
-    return {
-      assertion: `be one of type ${asFormattedArrayString(expectedTypes)}`,
-      condition: !expectedTypes.includes(valueType),
-      value: valueType,
-    }
-  }
-
-
-  @asValidator('value')
-  toBeKeyOf (value, obj, objectName) {
-    return {
-      assertion: `be a key of \`${objectName}\``,
-      condition: Reflect.has(obj, value),
-    }
-  }
-
-  @asValidator('value')
-  toBeValueOf (currentValue, _obj, objectName) {
-    const obj = Array.isArray(_obj) ? _obj : Object.values(_obj)
-    return {
-      assertion: `be a value of \`${objectName}\``,
-      condition: obj.some((value) => {
-        return value === currentValue
+      message: `be a value of \`${objectName}\``,
+      pass: objValues.some((objValue) => {
+        return objValue === value
       }),
     }
   }
 
 
-  @asValidator('value')
-  toContainKey (value, expectedKey) {
+  @validator
+  toContainKey (expectedKey) {
+    const name = this.#propertyName
+    const value = this.#propertyValue
+
     return {
-      assertion: `contain key \`${expectedKey}\``,
-      condition: !Reflect.has(value, expectedKey),
+      message: `contain key \`${expectedKey}\``,
+      pass: Reflect.has(value, expectedKey),
+      value: `${name}${asFormattedObjectKeyString(Reflect.ownKeys(value))}`,
     }
   }
 
-  @asValidator('value')
-  toContainValue (_currentValue, expectedValue) {
-    const values = Array.isArray(_currentValue) ? _currentValue : Object.values(_currentValue)
+  @validator
+  toContainValue (expectedValue) {
+    const value = this.#propertyValue
+    const valueMembers = Array.isArray(value) ? value : Object.values(value)
 
     return {
-      assertion: `contain value \`${expectedValue}\``,
-      condition: !values.some((value) => {
-        return value === expectedValue
+      message: `contain value \`${expectedValue}\``,
+      pass: valueMembers.some((valueMember) => {
+        return valueMember === expectedValue
       }),
     }
   }
 
 
-  @asValidator('length')
-  toHaveLength (currentLength, expectedLength) {
+  @validator
+  toHaveLength (expectedLength) {
+    const length = this.#propertyLength
+
     return {
-      assertion: `have a length of \`${expectedLength}\``,
-      condition: currentLength !== expectedLength,
-      value: currentLength,
+      message: `have a length of \`${expectedLength}\``,
+      pass: length === expectedLength,
+      value: length,
     }
   }
 
-  @asValidator('length')
-  toHaveLengthGreaterThan (currentLength, minimumLength) {
+  @validator
+  toHaveLengthGreaterThan (minimumLength) {
+    const length = this.#propertyLength
+
     return {
-      assertion: `have a length greater than \`${minimumLength}\``,
-      condition: currentLength > minimumLength,
-      value: currentLength,
+      message: `have a length greater than \`${minimumLength}\``,
+      pass: length > minimumLength,
+      value: length,
     }
   }
 
-  @asValidator('length')
-  toHaveLengthLessThan (currentLength, maximumLength) {
+  @validator
+  toHaveLengthLessThan (maximumLength) {
+    const length = this.#propertyLength
+
     return {
-      assertion: `have a length less than \`${maximumLength}\``,
-      condition: currentLength < maximumLength,
-      value: currentLength,
+      message: `have a length less than \`${maximumLength}\``,
+      pass: length < maximumLength,
+      value: length,
     }
   }
 
-  @asValidator('length')
-  toHaveLengthBetween (currentLength, minLength, maxLength) {
+  @validator
+  toHaveLengthBetween (minLength, maxLength) {
+    const length = this.#propertyLength
+
     return {
-      assertion: `have a length between \`${minLength}\` and \`${maxLength}\``,
-      condition: currentLength < minLength || currentLength > maxLength,
-      value: currentLength,
+      message: `have a length between \`${minLength}\` and \`${maxLength}\``,
+      pass: length >= minLength && length <= maxLength,
+      value: length,
     }
   }
 }
