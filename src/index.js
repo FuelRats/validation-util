@@ -14,7 +14,7 @@ const validate = (args = {}) => {
 
 
 
-const assert = (arg, argName = 'argument', parentName, parentType) => {
+const assert = (argName, argValue, parentName, parentType) => {
   const parentMeta = (parentName || parentType)
     ? {
       name: parentName ?? 'object',
@@ -22,8 +22,7 @@ const assert = (arg, argName = 'argument', parentName, parentType) => {
     }
     : undefined
 
-
-  return new PropertyValidator(arg, argName, parentMeta)
+  return new PropertyValidator(argName, argValue, parentMeta)
 }
 
 
