@@ -16,7 +16,14 @@ class TestClass {
 }
 class BadTestClass {}
 
-
+/**
+ * funcName - name of the function to test
+ * testValue - value to test against
+ * passArgs - arguments to the function which will cause a passing condition.
+ * failArgs - arguments to the function which will cause a failing condition.
+ * throwMessage - message that will throw when the function fails
+ * manualTests - any additional tests to be ran within the same description block.
+ */
 const validatorTests = [
   [
     'throwCustom',
