@@ -21,7 +21,7 @@
     "test": "jest",
     "test:watch": "yarn test --watchAll",
     "build": "rm -rf dist && yarn rollup --config",
-    "prepublish": "yarn build"
+    "prepublish": "yarn test && yarn build"
   },
   "devDependencies": {
     "@babel/cli": "^7.8.4",
