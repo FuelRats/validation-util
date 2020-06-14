@@ -1,5 +1,5 @@
+import ValidationError from '../../src/classes/ValidationError'
 import isRequired from '../../src/util/isRequired'
-
 
 
 
