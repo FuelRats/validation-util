@@ -1,20 +1,20 @@
 {
   "name": "@fuelrats/validation-util",
   "license": "BSD-3-Clause",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/FuelRats/argument-validator-utils.git"
+    "url": "https://github.com/FuelRats/validation-util.git"
   },
-  "homepage": "https://github.com/FuelRats/argument-validator-utils",
+  "homepage": "https://github.com/FuelRats/validation-util",
   "author": {
     "name": "Cameron Welter",
     "email": "clapton@fuelrats.com",
     "url": "https://github.com/UncleClapton"
   },
   "bugs": {
-    "url": "https://github.com/FuelRats/argument-validator-utils/issues"
+    "url": "https://github.com/FuelRats/validation-util/issues"
   },
   "scripts": {
     "lint": "yarn eslint .",
