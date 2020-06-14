@@ -10,14 +10,14 @@ import Validator from './Validator'
 
 
 
-const validator = (_, __, descriptor) => {
+function validator (_, __, descriptor) {
   const validatorFunc = descriptor.value
   descriptor.value = function value (...args) {
     return this.resolve(validatorFunc.apply(this, args) ?? {})
   }
 }
 
-const enhancedTypeof = (value) => {
+function enhancedTypeof (value) {
   if (Array.isArray(value)) {
     return 'array'
   }

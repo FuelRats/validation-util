@@ -1,4 +1,4 @@
-export const formatFunctionString = (value) => {
+export function formatFunctionString (value) {
   let newValue = value
   const newLineIndex = newValue.indexOf('\n')
 
@@ -9,8 +9,7 @@ export const formatFunctionString = (value) => {
   return `[${newValue}]`
 }
 
-
-export const asFormattedArrayString = (values, strEnc = '`', openChar = '[ ', closeChar = ' ]') => {
+export function asFormattedArrayString (values, strEnc = '`', openChar = '[ ', closeChar = ' ]') {
   return `${openChar}${values.map((value) => {
     let valueString = value?.toString()
 
@@ -22,18 +21,15 @@ export const asFormattedArrayString = (values, strEnc = '`', openChar = '[ ', cl
   }).join(', ')}${closeChar}`
 }
 
-
-export const asFormattedArgumentString = (values) => {
+export function asFormattedArgumentString (values) {
   return asFormattedArrayString(values, '', '(', ')')
 }
 
-export const asFormattedObjectKeyString = (values) => {
+export function asFormattedObjectKeyString (values) {
   return asFormattedArrayString(values, '`', '{ ', ' }')
 }
 
-
-
-export const combineAssertionMessages = (assertions, separator = ', ') => {
+export function combineAssertionMessages (assertions, separator = ', ') {
   return assertions.reduce(
     (acc, assertion) => {
       return acc.length
