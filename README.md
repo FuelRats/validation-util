@@ -1,2 +1,5 @@
-# argument-validator-utils
-A basic validator suite for function arguments
+# FuelRats Validation Utils
+
+Formerly `@fuelrats/argument-validator-utils`
+
+Tools for validating function input.
