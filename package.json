@@ -1,7 +1,7 @@
 {
   "name": "@fuelrats/argument-validator-utils",
   "license": "BSD-3-Clause",
-  "version": "1.1.0-canary.4",
+  "version": "1.1.0-canary.5",
   "main": "index.js",
   "repository": {
     "type": "git",
