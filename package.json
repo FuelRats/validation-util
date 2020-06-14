@@ -1,8 +1,8 @@
 {
   "name": "@fuelrats/argument-validator-utils",
   "license": "BSD-3-Clause",
-  "version": "1.0.1",
-  "main": "dist/index.js",
+  "version": "1.1.0-canary.4",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/FuelRats/argument-validator-utils.git"
@@ -24,24 +24,24 @@
     "prepublish": "yarn test && yarn build"
   },
   "devDependencies": {
-    "@babel/cli": "^7.8.4",
-    "@babel/core": "^7.8.7",
-    "@babel/plugin-proposal-class-properties": "^7.8.3",
-    "@babel/plugin-proposal-decorators": "^7.8.3",
-    "@babel/preset-env": "^7.8.7",
+    "@babel/cli": "^7.10.1",
+    "@babel/core": "^7.10.2",
+    "@babel/plugin-proposal-class-properties": "^7.10.1",
+    "@babel/plugin-proposal-decorators": "^7.10.1",
+    "@babel/preset-env": "^7.10.2",
     "@fuelrats/eslint-config": "^2.1.0",
-    "@rollup/plugin-node-resolve": "^7.1.1",
+    "@rollup/plugin-node-resolve": "^8.0.1",
     "babel-eslint": "^10.1.0",
-    "babel-jest": "^25.1.0",
-    "eslint": "^6.8.0",
+    "babel-jest": "^26.0.1",
+    "eslint": "^7.2.0",
     "eslint-plugin-babel": "^5.3.0",
-    "eslint-plugin-import": "^2.20.1",
-    "eslint-plugin-jsdoc": "^22.0.0",
-    "jest": "^25.1.0",
+    "eslint-plugin-import": "^2.21.2",
+    "eslint-plugin-jsdoc": "^27.0.7",
+    "jest": "^26.0.1",
     "jest-extended": "^0.11.5",
-    "rollup": "^1.32.0",
-    "rollup-plugin-auto-external": "^2.0.0",
-    "rollup-plugin-babel": "^4.3.3"
+    "rollup": "^2.16.1",
+    "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-node-externals": "^2.2.0"
   },
   "dependencies": {}
 }

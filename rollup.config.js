@@ -1,9 +1,8 @@
 /* eslint-env node */
 import resolve from '@rollup/plugin-node-resolve'
 import path from 'path'
-import autoExternal from 'rollup-plugin-auto-external'
 import babel from 'rollup-plugin-babel'
-
+import externals from 'rollup-plugin-node-externals'
 
 
 
@@ -12,10 +11,17 @@ const config = {
   input: path.resolve(__dirname, 'src', 'index.js'),
   output: {
     exports: 'named',
-    file: path.resolve(__dirname, 'dist', 'index.js'),
+    dir: path.resolve(__dirname, 'dist'),
+    chunkFileNames: '[name].js',
     format: 'cjs',
   },
-  plugins: [autoExternal(), resolve(), babel()],
+  manualChunks: (id) => {
+    if (id.includes('isRequired')) {
+      return 'isRequired'
+    }
+    return 'index'
+  },
+  plugins: [externals(), resolve(), babel()],
 }
 
 
