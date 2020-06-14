@@ -297,7 +297,7 @@ export default class PropertyValidator extends Validator {
     const value = this.#propertyValue
 
     return {
-      message: `contain key \`${expectedKey}\``,
+      message: `contain key \`${String(expectedKey)}\``,
       pass: Reflect.has(value, expectedKey),
       value: `${name}${asFormattedObjectKeyString(Reflect.ownKeys(value))}`,
     }
