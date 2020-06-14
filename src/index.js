@@ -1,7 +1,7 @@
 import ArgumentCollection from './classes/ArgumentCollection'
 import PropertyValidator from './classes/PropertyValidator'
 import ValidationError from './classes/ValidationError'
-
+import isRequired from './util/isRequired'
 
 
 
@@ -34,4 +34,5 @@ export {
   assert,
   validate,
   ValidationError,
+  isRequired,
 }
