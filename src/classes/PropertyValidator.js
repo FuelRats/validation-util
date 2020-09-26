@@ -147,13 +147,13 @@ export default class PropertyValidator extends Validator {
   extend (extensions = {}) {
     Object.entries(extensions).forEach(([name, assertFunc]) => {
       this[name] = (...args) => {
-        return this.resolve(assertFunc([{
+        return this.resolve(assertFunc({
           name: this.#propertyName,
           value: this.#propertyValue,
           type: this.#propertyType,
           length: this.#propertyLength,
           parent: this.parentMeta,
-        }, ...args]))
+        }, ...args))
       }
     })
   }
