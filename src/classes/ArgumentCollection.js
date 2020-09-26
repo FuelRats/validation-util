@@ -35,9 +35,11 @@ export default class ArgumentCollection extends Validator {
 
   extend (extensions) {
     this.#extensions = {
-      ...this.#extensions,
+      ...(this.#extensions ?? {}),
       ...extensions,
     }
+
+    return this
   }
 
 
