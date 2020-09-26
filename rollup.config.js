@@ -15,12 +15,6 @@ const config = {
     chunkFileNames: '[name].js',
     format: 'cjs',
   },
-  manualChunks: (id) => {
-    if (id.includes('isRequired')) {
-      return 'isRequired'
-    }
-    return 'index'
-  },
   plugins: [externals(), resolve(), babel()],
 }
 

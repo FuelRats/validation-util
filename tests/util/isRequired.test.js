@@ -1,4 +1,3 @@
-import ValidationError from '../../src/classes/ValidationError'
 import isRequired from '../../src/util/isRequired'
 
 
@@ -9,12 +8,12 @@ describe('isRequired()', () => {
   test('Throws ValidationError when called.', () => {
     expect(() => {
       isRequired('foo')
-    }).toThrowWithMessage(ValidationError, 'Expected argument `foo` to be defined.')
+    }).toThrowWithMessage(TypeError, 'Expected argument `foo` to be defined.')
   })
 
   test('Throws wish custom message when given override', () => {
     expect(() => {
       isRequired('foo', true)
-    }).toThrowWithMessage(ValidationError, 'foo')
+    }).toThrowWithMessage(TypeError, 'foo')
   })
 })
